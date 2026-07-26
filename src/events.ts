@@ -12,6 +12,12 @@
 
 export type Project = 'playhub' | 'one-q' | 'arvent' | 'game-publisher';
 
+/**
+ * Позиция списка внутри сообщения: задача из дайджеста, упавшая проверка,
+ * замечание. `url` необязателен — тогда рендерится просто строкой.
+ */
+export type Item = { text: string; url?: string };
+
 export type NotifyEvent =
   /** Выкатка кода на сервер. */
   | {
@@ -29,6 +35,8 @@ export type NotifyEvent =
       job: string;
       status: 'ok' | 'fail';
       stats?: Array<[label: string, value: string | number]>;
+      /** Детали: что именно упало, замечания прогона. */
+      items?: Item[];
       note?: string;
       url?: string;
     }
@@ -42,9 +50,9 @@ export type NotifyEvent =
       /**
        * Список позиций со ссылками — для дайджестов задач, где ценность в
        * самих названиях, а не в цифре. Рендерятся отдельным блоком после
-       * `lines`; `url` необязателен (тогда просто строка).
+       * `lines`.
        */
-      items?: Array<{ text: string; url?: string }>;
+      items?: Item[];
       url?: string;
     }
   /** Итог CI на основной ветке. */

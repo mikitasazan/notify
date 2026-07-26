@@ -57,6 +57,14 @@ for (let i = 1; i < args.length; i++) {
 }
 
 const one = (key: string): string | undefined => flags.get(key)?.[0];
+
+// --item "текст" или --item "текст|https://ссылка"
+const items = (): Array<{ text: string; url?: string }> =>
+  (flags.get('item') ?? []).map((raw) => {
+    const idx = raw.lastIndexOf('|');
+
+    return idx === -1 ? { text: raw } : { text: raw.slice(0, idx), url: raw.slice(idx + 1) };
+  });
 const pairs = (key: string): Array<[string, string]> =>
   (flags.get(key) ?? []).map((s) => {
     const idx = s.indexOf('=');
@@ -95,6 +103,7 @@ if (flags.has('json')) {
         job: one('job') ?? '(без имени)',
         status: one('status') as 'ok' | 'fail',
         stats: pairs('stat'),
+        items: items(),
         note: one('note'),
         url: one('url')
       };
@@ -106,12 +115,7 @@ if (flags.has('json')) {
         title: one('title') ?? '(без заголовка)',
         period: one('period'),
         lines: pairs('line'),
-        // --item "текст" или --item "текст|https://ссылка"
-        items: (flags.get('item') ?? []).map((raw) => {
-          const idx = raw.lastIndexOf('|');
-
-          return idx === -1 ? { text: raw } : { text: raw.slice(0, idx), url: raw.slice(idx + 1) };
-        }),
+        items: items(),
         url: one('url')
       };
       break;

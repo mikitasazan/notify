@@ -10,7 +10,7 @@
  * `🔴 incidents` сообщения четырёх проектов лежат вперемешку, и формат
  * должен быть один и тот же независимо от того, куда сообщение попало.
  */
-import type { NotifyEvent } from './events.ts';
+import type { Item, NotifyEvent } from './events.ts';
 
 /** Экранируется ВСЁ, что пришло снаружи — теги ставит только шаблон. */
 export const esc = (v: unknown): string =>
@@ -43,6 +43,10 @@ const link = (url: string | undefined, label: string): string | null =>
 
 const join = (parts: Array<string | null>): string => parts.filter((p): p is string => p !== null).join('\n');
 
+/** Список позиций — общий для `job` и `report`, чтобы они не разъехались. */
+const bullets = (items: Item[] | undefined): string[] =>
+  (items ?? []).map((it) => (it.url ? `• <a href="${esc(it.url)}">${esc(it.text)}</a>` : `• ${esc(it.text)}`));
+
 type Renderer<E extends NotifyEvent> = (e: E) => string;
 
 const renderDeploy: Renderer<Extract<NotifyEvent, { type: 'deploy' }>> = (e) => {
@@ -59,19 +63,20 @@ const renderDeploy: Renderer<Extract<NotifyEvent, { type: 'deploy' }>> = (e) => 
 
 const renderJob: Renderer<Extract<NotifyEvent, { type: 'job' }>> = (e) => {
   const icon = e.status === 'ok' ? '✅' : '🔴';
+  const items = bullets(e.items);
 
   return join([
     header(icon, e.job, e.project),
     ...(e.stats ?? []).map(([label, value]) => kv(label, value)),
+    items.length > 0 ? '' : null,
+    ...items,
     kv('примечание', e.note),
     link(e.url, 'Подробнее')
   ]);
 };
 
 const renderReport: Renderer<Extract<NotifyEvent, { type: 'report' }>> = (e) => {
-  const items = (e.items ?? []).map((it) =>
-    it.url ? `• <a href="${esc(it.url)}">${esc(it.text)}</a>` : `• ${esc(it.text)}`
-  );
+  const items = bullets(e.items);
 
   return join([
     header('📊', e.title, e.project),
