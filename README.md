@@ -66,7 +66,7 @@ notify report --project playhub --json < payload.json   # весь объект 
 - uses: mikitasazan/notify@v1
   if: always()
   with: { event: deploy, project: playhub, status: '${{ job.status }}' }
-  env:  { OPS_BOT_TOKEN: '${{ secrets.TELEGRAM_OPS_TOKEN }}' }
+  env:  { OPS_BOT_TOKEN: '${{ secrets.OPS_BOT_TOKEN }}' }
 ```
 
 `status: ${{ job.status }}` (`success`/`failure`) автоматически маппится в

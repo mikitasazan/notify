@@ -85,8 +85,8 @@ test('--status success не должен рисовать красное: опе
 
 test('sendReport без токена — skipped, а не исключение: отчёт не должен ронять прогон', async () => {
   const { sendReport } = await import('./send.ts');
-  const saved = process.env.TELEGRAM_OPS_TOKEN;
-  process.env.TELEGRAM_OPS_TOKEN = '';
+  const saved = process.env.OPS_BOT_TOKEN;
+  process.env.OPS_BOT_TOKEN = '';
 
   try {
     assert.equal(await sendReport('playhub', '<b>тест</b>'), 'skipped');
@@ -94,9 +94,9 @@ test('sendReport без токена — skipped, а не исключение: 
     assert.equal(await sendReport('плейхаб', '<b>тест</b>'), 'skipped');
   } finally {
     if (saved === undefined) {
-      delete process.env.TELEGRAM_OPS_TOKEN;
+      delete process.env.OPS_BOT_TOKEN;
     } else {
-      process.env.TELEGRAM_OPS_TOKEN = saved;
+      process.env.OPS_BOT_TOKEN = saved;
     }
   }
 });
