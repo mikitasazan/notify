@@ -39,6 +39,12 @@ export type NotifyEvent =
       title: string;
       period?: string;
       lines: Array<[label: string, value: string | number]>;
+      /**
+       * Список позиций со ссылками — для дайджестов задач, где ценность в
+       * самих названиях, а не в цифре. Рендерятся отдельным блоком после
+       * `lines`; `url` необязателен (тогда просто строка).
+       */
+      items?: Array<{ text: string; url?: string }>;
       url?: string;
     }
   /** Итог CI на основной ветке. */

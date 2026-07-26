@@ -106,6 +106,12 @@ if (flags.has('json')) {
         title: one('title') ?? '(без заголовка)',
         period: one('period'),
         lines: pairs('line'),
+        // --item "текст" или --item "текст|https://ссылка"
+        items: (flags.get('item') ?? []).map((raw) => {
+          const idx = raw.lastIndexOf('|');
+
+          return idx === -1 ? { text: raw } : { text: raw.slice(0, idx), url: raw.slice(idx + 1) };
+        }),
         url: one('url')
       };
       break;

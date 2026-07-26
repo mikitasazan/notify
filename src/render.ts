@@ -68,14 +68,21 @@ const renderJob: Renderer<Extract<NotifyEvent, { type: 'job' }>> = (e) => {
   ]);
 };
 
-const renderReport: Renderer<Extract<NotifyEvent, { type: 'report' }>> = (e) =>
-  join([
+const renderReport: Renderer<Extract<NotifyEvent, { type: 'report' }>> = (e) => {
+  const items = (e.items ?? []).map((it) =>
+    it.url ? `• <a href="${esc(it.url)}">${esc(it.text)}</a>` : `• ${esc(it.text)}`
+  );
+
+  return join([
     header('📊', e.title, e.project),
     e.period ? esc(e.period) : null,
     e.period ? '' : null,
     ...e.lines.map(([label, value]) => kv(label, value)),
+    items.length > 0 ? '' : null,
+    ...items,
     link(e.url, 'Открыть отчёт')
   ]);
+};
 
 const renderCi: Renderer<Extract<NotifyEvent, { type: 'ci' }>> = (e) => {
   const icon = e.status === 'ok' ? '✅' : '🔴';

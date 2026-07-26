@@ -31,6 +31,24 @@ for (const sample of SAMPLES) {
   });
 }
 
+test('report: items рендерятся ссылками, текст экранируется', () => {
+  const text = render({
+    type: 'report',
+    project: 'arvent',
+    title: 'Дайджест',
+    lines: [['Открыто', 2]],
+    items: [
+      { text: `#38 ${XSS}`, url: 'https://github.com/x/y/issues/38' },
+      { text: 'без ссылки' }
+    ]
+  });
+
+  assert.ok(text.includes('<a href="https://github.com/x/y/issues/38">'), 'ссылка должна остаться кликабельной');
+  assert.ok(text.includes('&lt;script&gt;'), 'текст позиции должен быть экранирован');
+  assert.ok(!text.includes('<script>'), 'сырой тег не должен пройти');
+  assert.ok(text.includes('• без ссылки'), 'позиция без url — просто строка');
+});
+
 test('clampMessage режет длинный текст по границе строки', () => {
   const long = Array.from({ length: 500 }, (_, i) => `строка ${i}`).join('\n');
   const clamped = render({ type: 'incident', project: 'playhub', title: 'x', detail: long });
