@@ -11,33 +11,28 @@
 import type { NotifyEvent, Project } from './events.ts';
 import { severity } from './events.ts';
 
-/**
- * Форум-супергруппа «Ops». ЗАПОЛНИТЬ после Фазы 0 (владелец создаёт бота,
- * группу и темы руками — см. docs/rollout.md) — до этого момента строка
- * ниже намеренно невалидна, чтобы отправка падала явно, а не улетала в
- * никуда молча.
- */
-export const OPS_CHAT = 'FILL_ME_AFTER_PHASE_0';
+/** Форум-супергруппа «Ops» — создана 2026-07-26, темы включены. */
+export const OPS_CHAT = '-1004386003182';
 
 /** Тема «🔴 incidents» — сюда дублируется всё критическое со всех проектов. */
-export const INCIDENTS_TOPIC = 0; // FILL_ME_AFTER_PHASE_0
+export const INCIDENTS_TOPIC = 7;
 
-/** Канал «Arvent Ops» — команда arvent, другие люди. Существует уже сейчас. */
+/** Канал «Arvent Ops» — команда arvent, другие люди. Существовал до миграции. */
 export const ARVENT_TEAM_CHAT = '-1003972509373';
 
 export const ROUTES: Record<
   Project,
   {
-    /** Id темы форума для этого проекта. FILL_ME_AFTER_PHASE_0. */
+    /** Id темы форума для этого проекта (`notify setup` печатает его для новых). */
     topic: number;
     /** Дополнительная цель для отдельных типов событий этого проекта. */
     extra?: { chat: string; types: NotifyEvent['type'][] };
   }
 > = {
-  playhub: { topic: 0 },
-  'one-q': { topic: 0 },
-  'game-publisher': { topic: 0 },
-  arvent: { topic: 0, extra: { chat: ARVENT_TEAM_CHAT, types: ['pr', 'ci'] } }
+  playhub: { topic: 3 },
+  'game-publisher': { topic: 4 },
+  'one-q': { topic: 5 },
+  arvent: { topic: 6, extra: { chat: ARVENT_TEAM_CHAT, types: ['pr', 'ci'] } }
 };
 
 export type Target = { chat: string; thread?: number; silent: boolean };

@@ -22,12 +22,6 @@ export const setupTopic = async (project: string, title: string): Promise<void> 
     return;
   }
 
-  if (OPS_CHAT === 'FILL_ME_AFTER_PHASE_0') {
-    log('OPS_CHAT в src/routes.ts ещё не заполнен — сначала пройти Фазу 0');
-
-    return;
-  }
-
   const res = await fetch(`https://api.telegram.org/bot${token}/createForumTopic`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
