@@ -52,5 +52,14 @@ export type Target = { chat: string; thread?: number; silent: boolean };
 export const targets = (e: NotifyEvent): Target[] => {
   const forum = ROUTES[e.project];
 
+  // Неизвестный проект — опечатка в `--project` или проект, забытый в ROUTES.
+  // Возвращаем пустой список, а не падаем: уведомление не имеет права уронить
+  // вызвавший его деплой или крон (в bash с `set -e` падение было бы фатальным).
+  if (!forum) {
+    console.error(`[notify] неизвестный проект «${e.project}» — известны: ${Object.keys(ROUTES).join(', ')}`);
+
+    return [];
+  }
+
   return [{ chat: forum.chat, thread: forum.ops, silent: severity(e) === 'info' }];
 };

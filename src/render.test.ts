@@ -53,6 +53,43 @@ test('clampMessage режет длинный текст по границе ст
   const long = Array.from({ length: 500 }, (_, i) => `строка ${i}`).join('\n');
   const clamped = render({ type: 'incident', project: 'playhub', title: 'x', detail: long });
 
-  assert.ok(clamped.length <= 4096);
+  assert.ok(clamped.length <= 4002);
   assert.ok(clamped.endsWith('…'));
+});
+
+test('длинный текст ОДНОЙ строкой не выбрасывается целиком', () => {
+  // Самый частый detail у инцидента — стектрейс или вывод команды, часто без
+  // единого перевода строки. Раньше такой текст терялся весь: приходил
+  // заголовок и ничего о поломке.
+  const clamped = render({
+    type: 'incident',
+    project: 'playhub',
+    title: 'Упал импорт',
+    detail: 'A'.repeat(6000)
+  });
+
+  assert.ok(clamped.length > 3000, `содержимое потеряно, длина всего ${clamped.length}`);
+  assert.ok(clamped.includes('AAAA'));
+});
+
+test('кламп не оставляет незакрытых тегов', () => {
+  const clamped = render({
+    type: 'job',
+    project: 'playhub',
+    job: 'Ж'.repeat(5000), // заголовок обёрнут в <b> — обрыв внутри тега ломал разметку
+    status: 'fail'
+  });
+
+  const opened = (clamped.match(/<b[ >]/g) ?? []).length;
+  const closed = (clamped.match(/<\/b>/g) ?? []).length;
+
+  assert.equal(opened, closed, 'несбалансированный <b> — Telegram отвергнет сообщение');
+  assert.ok(!/<[a-z]*$/.test(clamped), 'сообщение обрывается внутри тега');
+});
+
+test('неизвестный тип события даёт понятную ошибку, а не падение рендерера', () => {
+  assert.throws(
+    () => render({ type: 'bogus', project: 'playhub' } as unknown as NotifyEvent),
+    /неизвестный тип события/
+  );
 });

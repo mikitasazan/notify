@@ -42,19 +42,49 @@ if (command === 'setup') {
 }
 
 const flags = new Map<string, string[]>();
+const parseErrors: string[] = [];
+
+/** Флаги без значения. Всё остальное обязано его иметь. */
+const BOOLEAN_FLAGS = new Set(['json']);
 
 for (let i = 1; i < args.length; i++) {
   const arg = args[i];
 
   if (!arg.startsWith('--')) {
+    parseErrors.push(`лишний аргумент без флага: «${arg}»`);
+    continue;
+  }
+
+  // Форма `--key=value` обязательна для значений, начинающихся с `--`
+  // (текст ошибки, кусок диффа): иначе они были бы съедены как флаги.
+  const eq = arg.indexOf('=');
+
+  if (eq !== -1) {
+    const key = arg.slice(2, eq);
+    flags.set(key, [...(flags.get(key) ?? []), arg.slice(eq + 1)]);
     continue;
   }
 
   const key = arg.slice(2);
-  const takesValue = i + 1 < args.length && !args[i + 1].startsWith('--');
-  const value = takesValue ? args[++i] : 'true';
 
-  flags.set(key, [...(flags.get(key) ?? []), value]);
+  if (BOOLEAN_FLAGS.has(key)) {
+    flags.set(key, ['true']);
+    continue;
+  }
+
+  const next = args[i + 1];
+
+  // Раньше флаг без значения молча становился строкой 'true'. Отсюда
+  // `--url` в конце команды давал `href="true"`, Telegram отвечал 400 и
+  // ТЕРЯЛОСЬ ВСЁ сообщение, а `--status` без значения рисовал 🔴 на
+  // успешном деплое. Теперь это явная ошибка разбора.
+  if (next === undefined || next.startsWith('--')) {
+    parseErrors.push(`флаг --${key} без значения`);
+    continue;
+  }
+
+  i++;
+  flags.set(key, [...(flags.get(key) ?? []), next]);
 }
 
 const one = (key: string): string | undefined => flags.get(key)?.[0];
@@ -75,6 +105,20 @@ const pairs = (key: string): Array<[string, string]> =>
 
 const project = (): Project => one('project') as Project;
 
+/**
+ * Всё, что не признано успехом, считается провалом.
+ *
+ * Тут важна не строгость, а согласованность: раньше `--status success`
+ * (естественная опечатка при ручном вызове) рисовал 🔴 «упал», но `severity()`
+ * видел «не fail» и слал сообщение БЕЗ звука. Красная плашка без звука —
+ * худший исход: авария выглядит аварией, но не будит.
+ */
+const status = (): 'ok' | 'fail' => {
+  const raw = (one('status') ?? '').toLowerCase();
+
+  return raw === 'ok' || raw === 'success' || raw === 'passed' || raw === '0' ? 'ok' : 'fail';
+};
+
 let event: NotifyEvent | undefined;
 
 if (flags.has('json')) {
@@ -91,7 +135,7 @@ if (flags.has('json')) {
       event = {
         type: 'deploy',
         project: project(),
-        status: one('status') as 'ok' | 'fail',
+        status: status(),
         commit: one('commit'),
         url: one('url'),
         target: one('target')
@@ -102,7 +146,7 @@ if (flags.has('json')) {
         type: 'job',
         project: project(),
         job: one('job') ?? '(без имени)',
-        status: one('status') as 'ok' | 'fail',
+        status: status(),
         stats: pairs('stat'),
         items: items(),
         note: one('note'),
@@ -124,7 +168,7 @@ if (flags.has('json')) {
       event = {
         type: 'ci',
         project: project(),
-        status: one('status') as 'ok' | 'fail',
+        status: status(),
         branch: one('branch'),
         commit: one('commit'),
         actor: one('actor'),
@@ -166,10 +210,25 @@ if (flags.has('json')) {
   }
 }
 
-if (event) {
-  const result = await notify(event);
+// Ошибки разбора — до отправки: лучше внятно сказать, что не так с командой,
+// чем прислать сообщение с «true» вместо ссылки или 🔴 на успешном деплое.
+if (parseErrors.length > 0) {
+  for (const err of parseErrors) {
+    log(err);
+  }
+  log('событие не отправлено — исправь команду');
+  process.exit(0);
+}
 
-  log(result);
+if (event) {
+  // Ловим ВСЁ: уведомление не имеет права уронить деплой или крон, который
+  // его вызвал. В bash с `set -e` (или в `trap ... ERR`) ненулевой код здесь
+  // завалил бы саму задачу — ровно то, чего пакет обязан не делать.
+  try {
+    log(await notify(event));
+  } catch (err) {
+    log(`не отправлено: ${err instanceof Error ? err.message : String(err)}`);
+  }
 }
 
 process.exit(0);

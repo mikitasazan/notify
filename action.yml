@@ -54,34 +54,77 @@ runs:
       with:
         node-version: 24
 
+    # ВСЕ входы приходят ТОЛЬКО через env, никогда через ${{ }} внутри run.
+    # Причина не стилистическая: GitHub подставляет ${{ }} в текст скрипта ДО
+    # запуска bash. Коммит с апострофом («don't crash») ломал шаг синтаксической
+    # ошибкой, а `$(...)` в заголовке PR выполнялся бы на раннере — там, где
+    # лежит TELEGRAM_OPS_TOKEN. Через env значения остаются данными.
     - shell: bash
+      env:
+        IN_EVENT: ${{ inputs.event }}
+        IN_PROJECT: ${{ inputs.project }}
+        IN_STATUS: ${{ inputs.status }}
+        IN_COMMIT: ${{ inputs.commit }}
+        IN_URL: ${{ inputs.url }}
+        IN_TARGET: ${{ inputs.target }}
+        IN_JOB: ${{ inputs.job-name }}
+        IN_NOTE: ${{ inputs.note }}
+        IN_TITLE: ${{ inputs.title }}
+        IN_PERIOD: ${{ inputs.period }}
+        IN_ACTION: ${{ inputs.action }}
+        IN_NUMBER: ${{ inputs.number }}
+        IN_AUTHOR: ${{ inputs.author }}
+        IN_REVIEWER: ${{ inputs.reviewer }}
+        IN_DETAIL: ${{ inputs.detail }}
+        IN_STATS: ${{ inputs.stats }}
+        IN_BRANCH: ${{ inputs.branch }}
+        IN_ACTOR: ${{ inputs.actor }}
+        GH_REF_NAME: ${{ github.ref_name }}
+        GH_ACTOR: ${{ github.actor }}
+        ACTION_PATH: ${{ github.action_path }}
       run: |
-        set -euo pipefail
-        STATUS="${{ inputs.status }}"
+        set -uo pipefail
+
+        ARGS=(--project "$IN_PROJECT")
+
         # job.status отдаёт success/failure — приводим к ok/fail, которые
-        # понимает пакет, чтобы не заставлять каждый workflow делать это сам.
-        case "$STATUS" in
-          success) STATUS=ok ;;
-          failure) STATUS=fail ;;
+        # понимает пакет. Нормализация здесь дублирует CLI намеренно: так
+        # `status: ${{ job.status }}` работает без обёрток в каждом workflow.
+        if [ -n "$IN_STATUS" ]; then
+          case "$IN_STATUS" in
+            success|ok) ARGS+=(--status ok) ;;
+            *)          ARGS+=(--status fail) ;;
+          esac
+        fi
+
+        add() { [ -n "$2" ] && ARGS+=("$1" "$2"); return 0; }
+        add --commit   "$IN_COMMIT"
+        add --url      "$IN_URL"
+        add --target   "$IN_TARGET"
+        add --job      "$IN_JOB"
+        add --note     "$IN_NOTE"
+        add --title    "$IN_TITLE"
+        add --period   "$IN_PERIOD"
+        add --action   "$IN_ACTION"
+        add --number   "$IN_NUMBER"
+        add --author   "$IN_AUTHOR"
+        add --reviewer "$IN_REVIEWER"
+        add --detail   "$IN_DETAIL"
+
+        # stats — многострочный вход, по строке на «метка=значение».
+        while IFS= read -r line; do
+          [ -n "$line" ] && ARGS+=(--stat "$line")
+        done <<< "$IN_STATS"
+
+        if [ "$IN_EVENT" = "ci" ]; then
+          ARGS+=(--branch "${IN_BRANCH:-$GH_REF_NAME}" --actor "${IN_ACTOR:-$GH_ACTOR}")
+        fi
+
+        OUT=$(node "$ACTION_PATH/src/cli.ts" "$IN_EVENT" "${ARGS[@]}" 2>&1) || true
+        printf '%s\n' "$OUT"
+
+        # Молчаливо потерянное уведомление — худший исход: workflow зелёный,
+        # а сообщения нет. Жёлтая аннотация видна в UI и не валит прогон.
+        case "$OUT" in
+          *failed*|*skipped*) echo "::warning::уведомление не доставлено: $OUT" ;;
         esac
-
-        ARGS=(--project "${{ inputs.project }}")
-        [ -n "$STATUS" ] && ARGS+=(--status "$STATUS")
-        [ -n "${{ inputs.commit }}" ] && ARGS+=(--commit "${{ inputs.commit }}")
-        [ -n "${{ inputs.url }}" ] && ARGS+=(--url "${{ inputs.url }}")
-        [ -n "${{ inputs.target }}" ] && ARGS+=(--target "${{ inputs.target }}")
-        [ -n "${{ inputs.job-name }}" ] && ARGS+=(--job "${{ inputs.job-name }}")
-        [ -n "${{ inputs.note }}" ] && ARGS+=(--note "${{ inputs.note }}")
-        [ -n "${{ inputs.title }}" ] && ARGS+=(--title "${{ inputs.title }}")
-        [ -n "${{ inputs.period }}" ] && ARGS+=(--period "${{ inputs.period }}")
-        [ -n "${{ inputs.action }}" ] && ARGS+=(--action "${{ inputs.action }}")
-        [ -n "${{ inputs.number }}" ] && ARGS+=(--number "${{ inputs.number }}")
-        [ -n "${{ inputs.author }}" ] && ARGS+=(--author "${{ inputs.author }}")
-        [ -n "${{ inputs.reviewer }}" ] && ARGS+=(--reviewer "${{ inputs.reviewer }}")
-        [ -n "${{ inputs.detail }}" ] && ARGS+=(--detail "${{ inputs.detail }}")
-
-        BRANCH="${{ inputs.branch }}"; BRANCH="${BRANCH:-${{ github.ref_name }}}"
-        ACTOR="${{ inputs.actor }}"; ACTOR="${ACTOR:-${{ github.actor }}}"
-        [ "${{ inputs.event }}" = "ci" ] && ARGS+=(--branch "$BRANCH" --actor "$ACTOR")
-
-        node "${{ github.action_path }}/src/cli.ts" "${{ inputs.event }}" "${ARGS[@]}"

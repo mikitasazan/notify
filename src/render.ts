@@ -20,7 +20,19 @@ export const esc = (v: unknown): string =>
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 
-/** Telegram режет сообщение на 4096 символах — режем сами по границе строки. */
+/**
+ * Telegram режет сообщение на 4096 символах — режем сами, по возможности по
+ * границе строки.
+ *
+ * Два подвоха, оба приводили к ТИХОЙ потере сообщения:
+ * 1. Резать строго по последнему `\n` нельзя: если длинный кусок идёт одной
+ *    строкой (стектрейс, вывод команды — самый частый `detail` у инцидента),
+ *    последний перевод строки стоит ПЕРЕД ним, и содержимое выбрасывалось
+ *    целиком — приходил заголовок без единого факта о поломке.
+ * 2. Резать посреди HTML-тега или сущности тоже нельзя: Telegram отвечает
+ *    `400 can't parse entities`, а 4xx мы считаем постоянной ошибкой и не
+ *    повторяем — сообщение исчезало совсем.
+ */
 export const clampMessage = (text: string, limit = 4000): string => {
   if (text.length <= limit) {
     return text;
@@ -28,8 +40,32 @@ export const clampMessage = (text: string, limit = 4000): string => {
 
   const cut = text.slice(0, limit);
   const lastBreak = cut.lastIndexOf('\n');
+  // По границе строки — только если так остаётся большая часть содержимого.
+  let end = lastBreak > limit * 0.6 ? lastBreak : limit;
 
-  return `${cut.slice(0, lastBreak > 0 ? lastBreak : limit)}\n…`;
+  // Не обрываемся внутри `<...>` и внутри `&...;` — иначе разметка ломается.
+  const openTag = cut.lastIndexOf('<', end - 1);
+  if (openTag !== -1 && cut.indexOf('>', openTag) === -1) {
+    end = openTag;
+  }
+  const amp = cut.lastIndexOf('&', end - 1);
+  if (amp !== -1 && end - amp <= 10 && cut.indexOf(';', amp) === -1) {
+    end = amp;
+  }
+
+  const body = cut.slice(0, end);
+  // Кламп мог отрезать закрывающие теги — добираем их, чтобы разметка сошлась.
+  const tail = ['b', 'a', 'i', 'code']
+    .filter((t) => {
+      const opened = (body.match(new RegExp(`<${t}[ >]`, 'g')) ?? []).length;
+      const closed = (body.match(new RegExp(`</${t}>`, 'g')) ?? []).length;
+
+      return opened > closed;
+    })
+    .map((t) => `</${t}>`)
+    .join('');
+
+  return `${body}${tail}\n…`;
 };
 
 const header = (icon: string, title: string, project: string): string =>
@@ -142,7 +178,14 @@ const RENDERERS: { [K in NotifyEvent['type']]: Renderer<Extract<NotifyEvent, { t
 
 /** Рендерит событие в готовый HTML-текст, обрезанный под лимит Telegram. */
 export const render = (e: NotifyEvent): string => {
-  const renderer = RENDERERS[e.type] as Renderer<typeof e>;
+  const renderer = RENDERERS[e.type] as Renderer<typeof e> | undefined;
+
+  // Прикрывает путь `--json` и вызовы из JS без типов: там `type` — обычная
+  // строка, и неизвестное значение роняло процесс через `renderer is not a
+  // function`. Падать из-за уведомления нельзя.
+  if (typeof renderer !== 'function') {
+    throw new Error(`неизвестный тип события: ${String(e.type)}`);
+  }
 
   return clampMessage(renderer(e));
 };

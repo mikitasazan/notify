@@ -95,7 +95,14 @@ const attempt = async (token: string, target: Target, text: string): Promise<Att
 
     // 4xx кроме 429 — постоянная ошибка (не тот thread, бот не админ,
     // неверный chat_id). Повтор её не исправит.
-    log(`HTTP ${res.status} — не повторяем, ошибка постоянная`);
+    //
+    // Причину обязательно вытаскиваем: Telegram кладёт её в `description`
+    // («message thread not found», «can't parse entities»), и без неё понять,
+    // почему уведомления пропали, невозможно — а разбираться будет не
+    // разработчик, а владелец.
+    const detail = (await res.json().catch(() => null)) as { description?: string } | null;
+
+    log(`HTTP ${res.status}: ${detail?.description ?? 'без описания'} — не повторяем, ошибка постоянная`);
 
     return { outcome: 'fail' };
   } catch {
@@ -148,11 +155,17 @@ export const notify = async (e: NotifyEvent): Promise<SendResult> => {
   }
 
   const text = render(e);
+  const where = targets(e);
+
+  if (where.length === 0) {
+    return 'skipped';
+  }
+
   const results: Array<'sent' | 'failed'> = [];
 
   // Последовательно, не Promise.all: провал одной цели не должен гонять
   // ретраи параллельно с остальными и колотить API по нескольким чатам разом.
-  for (const target of targets(e)) {
+  for (const target of where) {
     results.push(await sendOne(token, target, text));
   }
 
