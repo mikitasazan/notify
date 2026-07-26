@@ -82,3 +82,21 @@ test('--status success не должен рисовать красное: опе
   assert.match(stderr, /skipped/);
   assert.doesNotMatch(stderr, /без значения/);
 });
+
+test('sendReport без токена — skipped, а не исключение: отчёт не должен ронять прогон', async () => {
+  const { sendReport } = await import('./send.ts');
+  const saved = process.env.TELEGRAM_OPS_TOKEN;
+  process.env.TELEGRAM_OPS_TOKEN = '';
+
+  try {
+    assert.equal(await sendReport('playhub', '<b>тест</b>'), 'skipped');
+    // @ts-expect-error — проверяем нетипизированный вызов: так приходит опечатка из bash.
+    assert.equal(await sendReport('плейхаб', '<b>тест</b>'), 'skipped');
+  } finally {
+    if (saved === undefined) {
+      delete process.env.TELEGRAM_OPS_TOKEN;
+    } else {
+      process.env.TELEGRAM_OPS_TOKEN = saved;
+    }
+  }
+});

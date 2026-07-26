@@ -13,10 +13,10 @@
  * деплой или регулярную задачу, которая его вызвала.
  */
 import { execFileSync } from 'node:child_process';
-import type { NotifyEvent } from './events.ts';
-import { render } from './render.ts';
+import type { NotifyEvent, Project } from './events.ts';
+import { clampMessage, render } from './render.ts';
 import type { Target } from './routes.ts';
-import { targets } from './routes.ts';
+import { ROUTES, targets } from './routes.ts';
 
 export type SendResult = 'sent' | 'skipped' | 'failed';
 
@@ -159,22 +159,15 @@ const sendOne = async (token: string, target: Target, text: string): Promise<'se
   return 'failed';
 };
 
-/**
- * Отправляет событие во все его цели (тема проекта + при необходимости
- * `incidents` + чат команды). Цели идут последовательно; провал одной не
- * отменяет остальные. `'sent'`, если хотя бы одна цель получила сообщение.
- */
-export const notify = async (e: NotifyEvent): Promise<SendResult> => {
+/** Общий хвост для `notify` и `sendReport`: токен, цели, последовательная отправка. */
+const deliver = async (where: Target[], text: string): Promise<SendResult> => {
   const token = process.env.TELEGRAM_OPS_TOKEN?.trim();
 
   if (!token) {
-    log('нет TELEGRAM_OPS_TOKEN — событие не отправлено');
+    log('нет TELEGRAM_OPS_TOKEN — сообщение не отправлено');
 
     return 'skipped';
   }
-
-  const text = render(e);
-  const where = targets(e);
 
   if (where.length === 0) {
     return 'skipped';
@@ -189,4 +182,40 @@ export const notify = async (e: NotifyEvent): Promise<SendResult> => {
   }
 
   return results.includes('sent') ? 'sent' : 'failed';
+};
+
+/**
+ * Отправляет событие во все его цели (тема проекта + при необходимости
+ * `incidents` + чат команды). Цели идут последовательно; провал одной не
+ * отменяет остальные. `'sent'`, если хотя бы одна цель получила сообщение.
+ */
+export const notify = async (e: NotifyEvent): Promise<SendResult> => deliver(targets(e), render(e));
+
+/**
+ * Готовый HTML во вкладку «Ops» проекта — ТОЛЬКО для дневных отчётов.
+ *
+ * Зачем исключение из правила «свободного текста в API нет». Отчёт — это не
+ * событие: в нём плотная строка вроде
+ * `🎮 1284 игр (🍎 412 iOS +3 · 🤖 890 Android +5) | 📈 +240 запусков`,
+ * и разложить её в `label=value` можно только испортив. Но транспорт у отчёта
+ * ТОТ ЖЕ: ретраи, 429, таймауты, curl-фолбэк, номер вкладки. Пока его копировали
+ * в каждый скрипт, один и тот же баг с дублями на таймауте пришлось чинить
+ * дважды — в пакете и в game-publisher (27.07.2026).
+ *
+ * Граница: формат событий по-прежнему задаёт только пакет, «своё» уведомление
+ * о деплое или упавшей задаче написать нельзя. Здесь стандартизирован транспорт,
+ * а не формат — и в этом весь смысл.
+ *
+ * Всегда беззвучно: отчёт читают утром, а не по звонку.
+ */
+export const sendReport = async (project: Project, html: string): Promise<SendResult> => {
+  const forum = ROUTES[project];
+
+  if (!forum) {
+    log(`неизвестный проект «${project}» — отчёт не отправлен`);
+
+    return 'skipped';
+  }
+
+  return deliver([{ chat: forum.chat, thread: forum.ops, silent: true }], clampMessage(html));
 };
