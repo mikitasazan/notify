@@ -32,7 +32,10 @@ type Forum = {
 };
 
 export const ROUTES: Record<Project, Forum> = {
-  arvent: { chat: '-1004299939100', ops: 3, dev: 4 },
+  // ops/dev = 22/23, а не 3/4: старые вкладки удалили вручную 27.07.2026, и
+  // вместе с темой Telegram сносит её сообщения. Пересозданная тема получает
+  // НОВЫЙ id — id темы это id её первого сообщения, он не переиспользуется.
+  arvent: { chat: '-1004299939100', ops: 22, dev: 23 },
   playhub: { chat: '-1004418379613', ops: 3, dev: 4 },
   'game-publisher': { chat: '-1004292453693', ops: 3, dev: 4 },
   'one-q': { chat: '-1004466909784', ops: 3, dev: 4 }

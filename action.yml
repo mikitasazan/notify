@@ -44,6 +44,15 @@ inputs:
     required: false
   detail:
     required: false
+  stats:
+    description: 'Цифры для job — по строке на «метка=значение» (многострочный вход)'
+    required: false
+  lines:
+    description: 'Цифры для report — по строке на «метка=значение» (многострочный вход)'
+    required: false
+  items:
+    description: 'Позиции списка — по строке на «текст» или «текст|ссылка» (многострочный вход)'
+    required: false
 
 runs:
   using: composite
@@ -77,6 +86,8 @@ runs:
         IN_REVIEWER: ${{ inputs.reviewer }}
         IN_DETAIL: ${{ inputs.detail }}
         IN_STATS: ${{ inputs.stats }}
+        IN_LINES: ${{ inputs.lines }}
+        IN_ITEMS: ${{ inputs.items }}
         IN_BRANCH: ${{ inputs.branch }}
         IN_ACTOR: ${{ inputs.actor }}
         GH_REF_NAME: ${{ github.ref_name }}
@@ -111,10 +122,20 @@ runs:
         add --reviewer "$IN_REVIEWER"
         add --detail   "$IN_DETAIL"
 
-        # stats — многострочный вход, по строке на «метка=значение».
-        while IFS= read -r line; do
-          [ -n "$line" ] && ARGS+=(--stat "$line")
-        done <<< "$IN_STATS"
+        # Многострочные входы: по строке на значение. Раньше здесь читался
+        # `inputs.stats`, которого НЕ БЫЛО в объявлении входов выше — значит он
+        # всегда приходил пустым, а вызывающий workflow вдобавок получал
+        # предупреждение «Unexpected input». Через action нельзя было послать ни
+        # job с цифрами, ни report вообще (у него все данные в --line).
+        repeat() { # $1 = флаг, $2 = многострочное значение
+          while IFS= read -r line; do
+            [ -n "$line" ] && ARGS+=("$1" "$line")
+          done <<< "$2"
+          return 0
+        }
+        repeat --stat "$IN_STATS"
+        repeat --line "$IN_LINES"
+        repeat --item "$IN_ITEMS"
 
         if [ "$IN_EVENT" = "ci" ]; then
           ARGS+=(--branch "${IN_BRANCH:-$GH_REF_NAME}" --actor "${IN_ACTOR:-$GH_ACTOR}")

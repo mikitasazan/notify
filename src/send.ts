@@ -105,7 +105,20 @@ const attempt = async (token: string, target: Target, text: string): Promise<Att
     log(`HTTP ${res.status}: ${detail?.description ?? 'без описания'} — не повторяем, ошибка постоянная`);
 
     return { outcome: 'fail' };
-  } catch {
+  } catch (err) {
+    // Таймаут — НЕ то же самое, что «не доставлено»: запрос мог дойти, а ответ
+    // не успеть вернуться. Повтор (хоть curl-ом, хоть следующей попыткой) кладёт
+    // в чат второй экземпляр того же сообщения — дедупа у Bot API нет. Поэтому
+    // на таймауте останавливаемся и честно пишем 'failed': лишняя копия аварии
+    // хуже, чем пропущенная строка в логе, а сообщение, скорее всего, ушло.
+    if (err instanceof Error && err.name === 'TimeoutError') {
+      log('таймаут ответа — не повторяем: сообщение могло уже уйти');
+
+      return { outcome: 'fail' };
+    }
+
+    // Сюда попадают отказы соединения (DNS, TLS, сеть недоступна) — запрос не
+    // ушёл, дубля быть не может, фолбэк безопасен.
     log('fetch не прошёл, пробуем curl…');
 
     return sendViaCurl(token, target, text) ? { outcome: 'ok' } : { outcome: 'retry', waitMs: 1000 };

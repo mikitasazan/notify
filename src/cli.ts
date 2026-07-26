@@ -16,7 +16,7 @@
  *   notify pr       --project arvent  --action opened --number 142 --title "..."
  *   notify incident --project arvent  --title "Redis недоступен" --detail "$ERR"
  *   notify <type> --json < payload.json   # весь объект события со stdin
- *   notify setup <project> "🎮 Название"   # создать тему в форуме, см. setup.ts
+ *   notify setup <chat_id форума> <ключ-проекта>   # создать вкладки, см. setup.ts
  */
 import { readFileSync } from 'node:fs';
 import type { NotifyEvent, Project } from './events.ts';
