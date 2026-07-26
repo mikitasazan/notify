@@ -1,0 +1,57 @@
+# Пакет раскатывается на все проекты сразу: сломанный рендер или разбор
+# аргументов проявится не здесь, а на боевом уведомлении о падении деплоя —
+# то есть ровно тогда, когда уведомление нужнее всего. Поэтому проверка
+# гоняется на каждый push.
+#
+# Минуты: репозиторий публичный, значит Actions для него бесплатны и общий
+# лимит аккаунта не тратят. Прогон — меньше минуты, зависимостей нет.
+name: ci
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      # Только devDependencies (typescript + @types/node) — рантайм-зависимостей
+      # у пакета нет и не должно появиться.
+      - run: npm ci
+
+      - name: Типы
+        run: npm run typecheck
+
+      - name: Тесты
+        run: npm test
+
+      # Сборка обязана проходить: npm-потребители ставят пакет из git, и
+      # `prepare` собирает dist прямо при установке. Сломанная сборка = пакет
+      # не встанет ни в одном проекте.
+      - name: Сборка
+        run: npm run build
+
+      # Проверка, что собранный CLI действительно запускается. Без токена он
+      # обязан вернуть 'skipped' и код 0 — это контракт: уведомление не имеет
+      # права уронить вызвавшую его задачу.
+      - name: CLI не падает без токена
+        run: |
+          OUT=$(node dist/cli.js job --project playhub --job тест --status ok 2>&1)
+          echo "$OUT"
+          echo "$OUT" | grep -q skipped || { echo "ожидали skipped"; exit 1; }
+
+      - name: CLI не падает на неизвестном проекте
+        run: |
+          node dist/cli.js deploy --project несуществующий --status ok
+          echo "код возврата $? — обязан быть 0"
