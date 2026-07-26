@@ -44,7 +44,7 @@ const buildBody = (target: Target, text: string): string =>
  * stderr — в 'pipe', а не наследуется: сообщение об ошибке curl может
  * содержать кусок URL с токеном, в лог прогона он попадать не должен.
  */
-const sendViaCurl = (token: string, target: Target, text: string): boolean => {
+const sendViaCurl = (token: string, target: Target, text: string): 'ok' | 'fail' | 'retry' => {
   const config = [
     `url = "https://api.telegram.org/bot${token}/sendMessage"`,
     'request = "POST"',
@@ -61,9 +61,13 @@ const sendViaCurl = (token: string, target: Target, text: string): boolean => {
       stdio: ['pipe', 'pipe', 'pipe']
     });
 
-    return true;
-  } catch {
-    return false;
+    return 'ok';
+  } catch (err) {
+    // 28 — собственный таймаут curl (`max-time` выше). Как и таймаут fetch, он
+    // означает «ответа нет», а не «не доставлено»: повтор положил бы в чат
+    // вторую копию. Всё остальное (отказ соединения, 4xx с `fail`) повторить
+    // безопасно.
+    return (err as { status?: number }).status === 28 ? 'fail' : 'retry';
   }
 };
 
@@ -121,7 +125,9 @@ const attempt = async (token: string, target: Target, text: string): Promise<Att
     // ушёл, дубля быть не может, фолбэк безопасен.
     log('fetch не прошёл, пробуем curl…');
 
-    return sendViaCurl(token, target, text) ? { outcome: 'ok' } : { outcome: 'retry', waitMs: 1000 };
+    const curl = sendViaCurl(token, target, text);
+
+    return curl === 'retry' ? { outcome: 'retry', waitMs: 1000 } : { outcome: curl };
   }
 };
 
