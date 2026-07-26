@@ -1,0 +1,40 @@
+{
+  "name": "@mikitasazan/notify",
+  "version": "0.1.0",
+  "description": "Единая типизированная отправка Telegram-уведомлений (форум-темы, маршрутизация, ретраи) для всех проектов",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mikitasazan/notify.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mikitasazan/notify/issues"
+  },
+  "homepage": "https://github.com/mikitasazan/notify#readme",
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=22.18"
+  },
+  "files": [
+    "src",
+    "action.yml"
+  ],
+  "exports": {
+    ".": "./src/index.ts",
+    "./cli": "./src/cli.ts"
+  },
+  "bin": {
+    "notify": "./src/cli.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "node --test src/render.test.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "typescript": "^5.9.3"
+  }
+}

@@ -1,0 +1,87 @@
+name: notify
+description: Отправить типизированное Telegram-уведомление (форум-тема + при необходимости incidents/команда)
+author: mikitasazan
+
+inputs:
+  event:
+    description: Тип события — deploy, job, report, ci, pr, incident, heartbeat_miss
+    required: true
+  project:
+    description: playhub, one-q, arvent или game-publisher
+    required: true
+  status:
+    description: 'ok/fail (для deploy, job, ci) — обычно ${{ job.status }}, success/failure маппится автоматически'
+    required: false
+  commit:
+    required: false
+  url:
+    required: false
+  target:
+    required: false
+  job-name:
+    description: Имя задачи (для job/heartbeat_miss) — CLI-флаг --job
+    required: false
+  note:
+    required: false
+  title:
+    required: false
+  period:
+    required: false
+  branch:
+    description: 'По умолчанию — ${{ github.ref_name }}'
+    required: false
+  actor:
+    description: 'По умолчанию — ${{ github.actor }}'
+    required: false
+  action:
+    description: opened/review_requested/merged (для pr)
+    required: false
+  number:
+    required: false
+  author:
+    required: false
+  reviewer:
+    required: false
+  detail:
+    required: false
+
+runs:
+  using: composite
+  steps:
+    # Node 24 из кеша раннера, ~1с. Нативно исполняет .ts без сборки —
+    # зависимостей у пакета нет, ставить нечего.
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 24
+
+    - shell: bash
+      run: |
+        set -euo pipefail
+        STATUS="${{ inputs.status }}"
+        # job.status отдаёт success/failure — приводим к ok/fail, которые
+        # понимает пакет, чтобы не заставлять каждый workflow делать это сам.
+        case "$STATUS" in
+          success) STATUS=ok ;;
+          failure) STATUS=fail ;;
+        esac
+
+        ARGS=(--project "${{ inputs.project }}")
+        [ -n "$STATUS" ] && ARGS+=(--status "$STATUS")
+        [ -n "${{ inputs.commit }}" ] && ARGS+=(--commit "${{ inputs.commit }}")
+        [ -n "${{ inputs.url }}" ] && ARGS+=(--url "${{ inputs.url }}")
+        [ -n "${{ inputs.target }}" ] && ARGS+=(--target "${{ inputs.target }}")
+        [ -n "${{ inputs.job-name }}" ] && ARGS+=(--job "${{ inputs.job-name }}")
+        [ -n "${{ inputs.note }}" ] && ARGS+=(--note "${{ inputs.note }}")
+        [ -n "${{ inputs.title }}" ] && ARGS+=(--title "${{ inputs.title }}")
+        [ -n "${{ inputs.period }}" ] && ARGS+=(--period "${{ inputs.period }}")
+        [ -n "${{ inputs.action }}" ] && ARGS+=(--action "${{ inputs.action }}")
+        [ -n "${{ inputs.number }}" ] && ARGS+=(--number "${{ inputs.number }}")
+        [ -n "${{ inputs.author }}" ] && ARGS+=(--author "${{ inputs.author }}")
+        [ -n "${{ inputs.reviewer }}" ] && ARGS+=(--reviewer "${{ inputs.reviewer }}")
+        [ -n "${{ inputs.detail }}" ] && ARGS+=(--detail "${{ inputs.detail }}")
+
+        BRANCH="${{ inputs.branch }}"; BRANCH="${BRANCH:-${{ github.ref_name }}}"
+        ACTOR="${{ inputs.actor }}"; ACTOR="${ACTOR:-${{ github.actor }}}"
+        [ "${{ inputs.event }}" = "ci" ] && ARGS+=(--branch "$BRANCH" --actor "$ACTOR")
+
+        node "${{ github.action_path }}/src/cli.ts" "${{ inputs.event }}" "${ARGS[@]}"

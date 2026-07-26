@@ -1,0 +1,40 @@
+/**
+ * Один тест на весь пакет: для каждого типа события проверяет, что
+ * экранирование сработало и длина не превышает лимит Telegram. Встроенный
+ * раннер Node (`node --test`), без vitest/jest — ловит ровно то, что может
+ * сломаться незаметно: съехавший формат и дыру в экранировании.
+ */
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import type { NotifyEvent } from './events.ts';
+import { render } from './render.ts';
+
+const XSS = '<script>alert(1)</script>';
+
+const SAMPLES: NotifyEvent[] = [
+  { type: 'deploy', project: 'playhub', status: 'fail', commit: XSS, url: 'https://x' },
+  { type: 'job', project: 'playhub', job: XSS, status: 'ok', stats: [['метка', XSS]] },
+  { type: 'report', project: 'playhub', title: XSS, period: '26 июля', lines: [['ключ', XSS]] },
+  { type: 'ci', project: 'arvent', status: 'fail', branch: XSS, actor: 'x' },
+  { type: 'pr', project: 'arvent', action: 'opened', number: 1, title: XSS, author: XSS },
+  { type: 'incident', project: 'arvent', title: XSS, detail: XSS },
+  { type: 'heartbeat_miss', project: 'playhub', job: XSS, lastSeen: '10:00' }
+];
+
+for (const sample of SAMPLES) {
+  test(`${sample.type}: экранирует и укладывается в лимит`, () => {
+    const text = render(sample);
+
+    assert.ok(!text.includes('<script>'), 'сырой <script> не должен пройти в вывод');
+    assert.ok(text.includes('&lt;script&gt;'), 'экранированный вариант должен присутствовать');
+    assert.ok(text.length <= 4096, `длина ${text.length} превышает лимит Telegram`);
+  });
+}
+
+test('clampMessage режет длинный текст по границе строки', () => {
+  const long = Array.from({ length: 500 }, (_, i) => `строка ${i}`).join('\n');
+  const clamped = render({ type: 'incident', project: 'playhub', title: 'x', detail: long });
+
+  assert.ok(clamped.length <= 4096);
+  assert.ok(clamped.endsWith('…'));
+});

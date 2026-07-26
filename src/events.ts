@@ -1,0 +1,95 @@
+/**
+ * Каталог событий — единственная точка входа для отправки. `notify()` (см.
+ * `send.ts`) принимает ТОЛЬКО значения этого типа: свободного текста в API
+ * нет, значит «своё» сообщение технически не написать.
+ *
+ * Правило эволюции схемы (версии нет и не будет — сообщение живёт секунду и
+ * читается глазами, версионировать нечего):
+ *   - новое поле у СУЩЕСТВУЮЩЕГО типа добавляется ТОЛЬКО опциональным;
+ *   - обязательные поля не добавляются никогда — только новый тип события.
+ * Тогда старый вызывающий код и новый пакет совместимы в обе стороны.
+ */
+
+export type Project = 'playhub' | 'one-q' | 'arvent' | 'game-publisher';
+
+export type NotifyEvent =
+  /** Выкатка кода на сервер. */
+  | {
+      type: 'deploy';
+      project: Project;
+      status: 'ok' | 'fail';
+      commit?: string;
+      url?: string;
+      target?: string;
+    }
+  /** Регулярная задача по расписанию: импорт игр, бэкап БД, валидатор. */
+  | {
+      type: 'job';
+      project: Project;
+      job: string;
+      status: 'ok' | 'fail';
+      stats?: Array<[label: string, value: string | number]>;
+      note?: string;
+      url?: string;
+    }
+  /** Сводка с цифрами: дневной отчёт, дайджест аналитики. */
+  | {
+      type: 'report';
+      project: Project;
+      title: string;
+      period?: string;
+      lines: Array<[label: string, value: string | number]>;
+      url?: string;
+    }
+  /** Итог CI на основной ветке. */
+  | {
+      type: 'ci';
+      project: Project;
+      status: 'ok' | 'fail';
+      branch?: string;
+      commit?: string;
+      actor?: string;
+      url?: string;
+    }
+  /** Событие пул-реквеста. */
+  | {
+      type: 'pr';
+      project: Project;
+      action: 'opened' | 'review_requested' | 'merged';
+      number: number;
+      title: string;
+      author?: string;
+      reviewer?: string;
+      url?: string;
+    }
+  /** Приложение сломалось прямо сейчас (рантайм-алерт). */
+  | {
+      type: 'incident';
+      project: Project;
+      title: string;
+      detail?: string;
+      url?: string;
+    }
+  /** Задача не отметилась вовремя — сторож молчания (heartbeat). */
+  | {
+      type: 'heartbeat_miss';
+      project: Project;
+      job: string;
+      lastSeen?: string;
+      expected?: string;
+    };
+
+export type EventType = NotifyEvent['type'];
+
+/** Красное = со звуком и с дублем в тему инцидентов. Всё остальное — тихо. */
+export const severity = (e: NotifyEvent): 'info' | 'error' => {
+  if (e.type === 'incident' || e.type === 'heartbeat_miss') {
+    return 'error';
+  }
+
+  if ('status' in e && e.status === 'fail') {
+    return 'error';
+  }
+
+  return 'info';
+};
