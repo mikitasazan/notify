@@ -20,16 +20,20 @@
   },
   "files": [
     "src",
+    "dist",
     "action.yml"
   ],
   "exports": {
-    ".": "./src/index.ts",
-    "./cli": "./src/cli.ts"
+    ".": "./dist/index.js",
+    "./cli": "./dist/cli.js"
   },
+  "types": "./dist/index.d.ts",
   "bin": {
-    "notify": "./src/cli.ts"
+    "notify": "./dist/cli.js"
   },
   "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "prepare": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "node --test src/render.test.ts"
   },
