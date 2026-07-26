@@ -1,31 +1,24 @@
 /**
- * `notify setup <project> "<название>"` — создаёт тему в форуме через Bot API
- * `createForumTopic` и печатает готовую строку для `routes.ts`.
+ * `notify setup "<Название проекта>"` — заводит вкладки «⚙️ Ops» и «💬 Dev»
+ * в уже созданном форуме и печатает готовую строку для `ROUTES`.
  *
- * Для пяти исходных проектов НЕ используется — их темы владелец создал руками
- * в Фазе 0 (см. docs/rollout.md), а их id считаны один раз через
- * `reading-telegram` и вписаны в `routes.ts` напрямую. Эта команда — для
- * проектов, которые появятся ПОСЛЕ: у бота уже есть право «Управление
- * темами», значит подключение нового проекта не требует снова открывать
- * Telegram руками.
+ * Сам форум-супергруппу бот создать не может — Telegram разрешает это только
+ * живому аккаунту. Поэтому порядок для нового проекта такой:
+ *   1. создать группу в Telegram, включить в ней «Темы», добавить
+ *      @mikita_ops_bot администратором с правом «Управление темами»;
+ *   2. `notify setup <chat_id>` — заведёт обе вкладки и напечатает строку;
+ *   3. вставить строку в `src/routes.ts`.
+ *
+ * Шаг 1 делается один раз на проект и занимает полминуты; шаги 2–3 —
+ * механические.
  */
-import { OPS_CHAT } from './routes.ts';
-
 const log = (msg: string): void => console.error(`[notify] ${msg}`);
 
-export const setupTopic = async (project: string, title: string): Promise<void> => {
-  const token = process.env.TELEGRAM_OPS_TOKEN?.trim();
-
-  if (!token) {
-    log('нет TELEGRAM_OPS_TOKEN — не могу создать тему');
-
-    return;
-  }
-
+const createTopic = async (token: string, chat: string, name: string, color: number): Promise<number | null> => {
   const res = await fetch(`https://api.telegram.org/bot${token}/createForumTopic`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chat_id: OPS_CHAT, name: title }),
+    body: JSON.stringify({ chat_id: chat, name, icon_color: color }),
     signal: AbortSignal.timeout(10_000)
   });
 
@@ -36,15 +29,33 @@ export const setupTopic = async (project: string, title: string): Promise<void> 
   };
 
   if (!body.ok || !body.result) {
-    log(`не удалось создать тему: ${body.description ?? `HTTP ${res.status}`}`);
-    log('проверь: бот админ группы с правом «Управление темами»?');
+    log(`не удалось создать «${name}»: ${body.description ?? `HTTP ${res.status}`}`);
+
+    return null;
+  }
+
+  return body.result.message_thread_id;
+};
+
+export const setupTopic = async (chatId: string, projectKey: string): Promise<void> => {
+  const token = process.env.TELEGRAM_OPS_TOKEN?.trim();
+
+  if (!token) {
+    log('нет TELEGRAM_OPS_TOKEN — не могу создать вкладки');
 
     return;
   }
 
-  const topic = body.result.message_thread_id;
+  const ops = await createTopic(token, chatId, '⚙️ Ops', 9367192);
+  const dev = await createTopic(token, chatId, '💬 Dev', 7322096);
 
-  log(`тема "${title}" создана, id=${topic}`);
+  if (ops === null || dev === null) {
+    log('проверь: бот админ группы с правом «Управление темами», а темы в группе включены?');
+
+    return;
+  }
+
+  log(`вкладки созданы: Ops=${ops}, Dev=${dev}`);
   log('добавь в src/routes.ts:');
-  log(`  ${JSON.stringify(project)}: { topic: ${topic} },`);
+  log(`  ${JSON.stringify(projectKey)}: { chat: '${chatId}', ops: ${ops}, dev: ${dev} },`);
 };

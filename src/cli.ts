@@ -29,14 +29,15 @@ const args = process.argv.slice(2);
 const command = args[0];
 
 if (command === 'setup') {
-  const [, project, title] = args;
+  const [, chatId, projectKey] = args;
 
-  if (!project || !title) {
-    log('использование: notify setup <project> "<название темы>"');
+  if (!chatId || !projectKey) {
+    log('использование: notify setup <chat_id форума> <ключ-проекта>');
+    log('  сначала создай группу, включи в ней «Темы» и добавь бота админом');
     process.exit(0);
   }
 
-  await setupTopic(project, title);
+  await setupTopic(chatId, projectKey);
   process.exit(0);
 }
 
