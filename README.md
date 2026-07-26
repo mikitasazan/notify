@@ -32,8 +32,8 @@
 npm install @mikitasazan/notify
 ```
 
-Секрет один — `TELEGRAM_OPS_TOKEN`. Взять из vault (`vault get
-notify.TELEGRAM_OPS_TOKEN`) или из GitHub secrets репозитория.
+Секрет один — `OPS_BOT_TOKEN`. Взять из vault (`vault get
+notify.OPS_BOT_TOKEN`) или из GitHub secrets репозитория.
 
 ## Из TypeScript
 
@@ -66,7 +66,7 @@ notify report --project playhub --json < payload.json   # весь объект 
 - uses: mikitasazan/notify@v1
   if: always()
   with: { event: deploy, project: playhub, status: '${{ job.status }}' }
-  env:  { TELEGRAM_OPS_TOKEN: '${{ secrets.TELEGRAM_OPS_TOKEN }}' }
+  env:  { OPS_BOT_TOKEN: '${{ secrets.TELEGRAM_OPS_TOKEN }}' }
 ```
 
 `status: ${{ job.status }}` (`success`/`failure`) автоматически маппится в

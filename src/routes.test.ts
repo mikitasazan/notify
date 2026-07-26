@@ -51,7 +51,7 @@ test('у каждого проекта из ROUTES свой форум — об�
 const runCli = (...args: string[]): { code: number; stderr: string } => {
   const res = spawnSync(process.execPath, [fileURLToPath(new URL('cli.ts', import.meta.url)), ...args], {
     encoding: 'utf-8',
-    env: { ...process.env, TELEGRAM_OPS_TOKEN: '' }
+    env: { ...process.env, OPS_BOT_TOKEN: '', TELEGRAM_OPS_TOKEN: '' }
   });
 
   return { code: res.status ?? -1, stderr: res.stderr };

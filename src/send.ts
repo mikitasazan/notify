@@ -5,7 +5,7 @@
  * вызов, `message_thread_id`, повтор на HTTP 429 с уважением `retry_after`,
  * повтор на 5xx, отказ без повтора на прочих 4xx.
  *
- * Токен — ТОЛЬКО из `process.env.TELEGRAM_OPS_TOKEN`, с `.trim()`: перевод
+ * Токен — ТОЛЬКО из `process.env.OPS_BOT_TOKEN`, с `.trim()`: перевод
  * строки в токене (частая находка при копипасте) заставляет curl разобрать
  * конфиг как две директивы и утащить хвост токена в stderr прогона.
  *
@@ -161,10 +161,13 @@ const sendOne = async (token: string, target: Target, text: string): Promise<'se
 
 /** Общий хвост для `notify` и `sendReport`: токен, цели, последовательная отправка. */
 const deliver = async (where: Target[], text: string): Promise<SendResult> => {
-  const token = process.env.TELEGRAM_OPS_TOKEN?.trim();
+  // ponytail: TELEGRAM_OPS_TOKEN — запасное имя на время перехода, чтобы
+  // потребители, ещё не обновившие workflow, не замолчали. Убрать, когда во
+  // всех репозиториях останется только OPS_BOT_TOKEN.
+  const token = (process.env.OPS_BOT_TOKEN ?? process.env.TELEGRAM_OPS_TOKEN)?.trim();
 
   if (!token) {
-    log('нет TELEGRAM_OPS_TOKEN — сообщение не отправлено');
+    log('нет OPS_BOT_TOKEN — сообщение не отправлено');
 
     return 'skipped';
   }
