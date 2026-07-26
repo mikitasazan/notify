@@ -161,10 +161,7 @@ const sendOne = async (token: string, target: Target, text: string): Promise<'se
 
 /** Общий хвост для `notify` и `sendReport`: токен, цели, последовательная отправка. */
 const deliver = async (where: Target[], text: string): Promise<SendResult> => {
-  // ponytail: TELEGRAM_OPS_TOKEN — запасное имя на время перехода, чтобы
-  // потребители, ещё не обновившие workflow, не замолчали. Убрать, когда во
-  // всех репозиториях останется только OPS_BOT_TOKEN.
-  const token = (process.env.OPS_BOT_TOKEN ?? process.env.TELEGRAM_OPS_TOKEN)?.trim();
+  const token = process.env.OPS_BOT_TOKEN?.trim();
 
   if (!token) {
     log('нет OPS_BOT_TOKEN — сообщение не отправлено');

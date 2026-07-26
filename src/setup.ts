@@ -38,7 +38,7 @@ const createTopic = async (token: string, chat: string, name: string, color: num
 };
 
 export const setupTopic = async (chatId: string, projectKey: string): Promise<void> => {
-  const token = (process.env.OPS_BOT_TOKEN ?? process.env.TELEGRAM_OPS_TOKEN)?.trim();
+  const token = process.env.OPS_BOT_TOKEN?.trim();
 
   if (!token) {
     log('нет OPS_BOT_TOKEN — не могу создать вкладки');
