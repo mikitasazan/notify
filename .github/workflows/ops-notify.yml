@@ -56,6 +56,16 @@ jobs:
               out="$ACT"
               kind=issue ;;
           esac
+          # Пропускаем только действия, которые пакет умеет нарисовать. Проекты
+          # подписывают и лишнее (`reopened`, `review_request_removed`), а
+          # рендерер ищет значок по действию и на неизвестном падает — «Cannot
+          # destructure property 'icon' … is undefined». Шаг краснел, сообщение
+          # не уходило. Неизвестное должно молчать, а не ронять прогон.
+          case "$kind:$out" in
+            pr:opened|pr:ready_for_review|pr:review_requested|pr:approved|pr:changes_requested|pr:merged|pr:closed) ;;
+            issue:opened|issue:assigned|issue:closed) ;;
+            *) out="" ;;
+          esac
           echo "action=$out" >> "$GITHUB_OUTPUT"
           echo "kind=$kind"  >> "$GITHUB_OUTPUT"
 
