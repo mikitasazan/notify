@@ -145,3 +145,14 @@ CLI), однако общий workflow `.github/workflows/ops-notify.yml` их �
 npm run typecheck   # tsc --noEmit
 npm test            # node --test src/render.test.ts
 ```
+
+## Release
+
+Единый ритуал для всех общих пакетов (канон — скилл `package-ops`):
+
+```bash
+npm run release -- patch|minor|major   # тесты → бамп+тег → пуш → публикация по механизму пакета
+npm run consumers:check                # кто потребляет пакет и на какой версии (дрифт → exit 1)
+```
+
+Карта потребителей — `consumers.json` в корне.
