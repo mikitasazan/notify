@@ -17,6 +17,10 @@ inputs:
   url:
     required: false
   target:
+    description: Куда выкатили — заполнять только там, где окружений больше одного
+    required: false
+  via:
+    description: Откуда запустили — «GitHub Actions», «вручную с Mac»
     required: false
   job-name:
     description: Имя задачи (для job/heartbeat_miss) — CLI-флаг --job
@@ -78,6 +82,7 @@ runs:
         IN_COMMIT: ${{ inputs.commit }}
         IN_URL: ${{ inputs.url }}
         IN_TARGET: ${{ inputs.target }}
+        IN_VIA: ${{ inputs.via }}
         IN_JOB: ${{ inputs.job-name }}
         IN_NOTE: ${{ inputs.note }}
         IN_TITLE: ${{ inputs.title }}
@@ -115,6 +120,7 @@ runs:
         add --commit   "$IN_COMMIT"
         add --url      "$IN_URL"
         add --target   "$IN_TARGET"
+        add --via      "$IN_VIA"
         add --job      "$IN_JOB"
         add --note     "$IN_NOTE"
         add --title    "$IN_TITLE"

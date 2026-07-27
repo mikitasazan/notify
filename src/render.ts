@@ -92,6 +92,7 @@ const renderDeploy: Renderer<Extract<NotifyEvent, { type: 'deploy' }>> = (e) => 
   return join([
     header(icon, title, e.project),
     kv('коммит', e.commit),
+    kv('откуда', e.via),
     kv('куда', e.target),
     link(e.url, 'Открыть логи')
   ]);

@@ -199,7 +199,8 @@ if (flags.has('json')) {
         status: status(),
         commit: one('commit'),
         url: one('url'),
-        target: one('target')
+        target: one('target'),
+        via: one('via')
       };
       break;
     case 'job':
