@@ -106,6 +106,67 @@ const pairs = (key: string): Array<[string, string]> =>
 const project = (): Project => one('project') as Project;
 
 /**
+ * GitHub называет действия своими словами, и одно наше событие собирается из
+ * двух разных его событий: `pull_request` (opened/closed/…) и
+ * `pull_request_review` (submitted + state). Поэтому принимаем и сырые имена
+ * GitHub, и наши.
+ *
+ * Неизвестное действие — ОШИБКА, а не «сойдёт за opened». Молчаливая подмена
+ * означала бы, что «запрошены правки» приедет как «открыт», и владелец увидит
+ * не то, что произошло, — а он именно по этой ленте следит за работой команды.
+ */
+type PrAction = Extract<NotifyEvent, { type: 'pr' }>['action'];
+type IssueAction = Extract<NotifyEvent, { type: 'issue' }>['action'];
+
+const PR_ALIASES: Record<string, PrAction> = {
+  opened: 'opened',
+  reopened: 'opened',
+  ready_for_review: 'ready_for_review',
+  review_requested: 'review_requested',
+  review_request_removed: 'review_requested',
+  approved: 'approved',
+  changes_requested: 'changes_requested',
+  merged: 'merged',
+  closed: 'closed'
+};
+
+const ISSUE_ALIASES: Record<string, IssueAction> = {
+  opened: 'opened',
+  reopened: 'opened',
+  assigned: 'assigned',
+  closed: 'closed'
+};
+
+// Ошибка кладётся в parseErrors — тот же путь, что у остального разбора: ниже
+// он печатает все ошибки разом и выходит ДО отправки. Значение-заглушка нужно
+// только чтобы удовлетворить тип, до сети оно не доживёт.
+const prAction = (raw: string | undefined): PrAction => {
+  const hit = PR_ALIASES[(raw ?? '').toLowerCase()];
+
+  if (!hit) {
+    parseErrors.push(`--action: неизвестное действие PR «${raw ?? ''}» (${Object.keys(PR_ALIASES).join(', ')})`);
+
+    return 'opened';
+  }
+
+  return hit;
+};
+
+const issueAction = (raw: string | undefined): IssueAction => {
+  const hit = ISSUE_ALIASES[(raw ?? '').toLowerCase()];
+
+  if (!hit) {
+    parseErrors.push(
+      `--action: неизвестное действие задачи «${raw ?? ''}» (${Object.keys(ISSUE_ALIASES).join(', ')})`
+    );
+
+    return 'opened';
+  }
+
+  return hit;
+};
+
+/**
  * Всё, что не признано успехом, считается провалом.
  *
  * Тут важна не строгость, а согласованность: раньше `--status success`
@@ -179,11 +240,23 @@ if (flags.has('json')) {
       event = {
         type: 'pr',
         project: project(),
-        action: one('action') as 'opened' | 'review_requested' | 'merged',
+        action: prAction(one('action')),
         number: Number(one('number')),
         title: one('title') ?? '(без заголовка)',
         author: one('author'),
         reviewer: one('reviewer'),
+        url: one('url')
+      };
+      break;
+    case 'issue':
+      event = {
+        type: 'issue',
+        project: project(),
+        action: issueAction(one('action')),
+        number: Number(one('number')),
+        title: one('title') ?? '(без заголовка)',
+        author: one('author'),
+        assignee: one('assignee'),
         url: one('url')
       };
       break;

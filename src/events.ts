@@ -65,15 +65,37 @@ export type NotifyEvent =
       actor?: string;
       url?: string;
     }
-  /** Событие пул-реквеста. */
+  /**
+   * Событие пул-реквеста. Виды покрывают весь путь PR, потому что владелец
+   * следит за работой команды по вкладке Ops, а не по почте: почта приходит
+   * только когда тебя позвали лично, и половина событий в неё не попадает.
+   */
   | {
       type: 'pr';
       project: Project;
-      action: 'opened' | 'review_requested' | 'merged';
+      action:
+        | 'opened'
+        | 'ready_for_review'
+        | 'review_requested'
+        | 'approved'
+        | 'changes_requested'
+        | 'merged'
+        | 'closed';
       number: number;
       title: string;
       author?: string;
       reviewer?: string;
+      url?: string;
+    }
+  /** Событие задачи: заведена, взята в работу, закрыта. */
+  | {
+      type: 'issue';
+      project: Project;
+      action: 'opened' | 'assigned' | 'closed';
+      number: number;
+      title: string;
+      author?: string;
+      assignee?: string;
       url?: string;
     }
   /** Приложение сломалось прямо сейчас (рантайм-алерт). */

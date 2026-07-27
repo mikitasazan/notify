@@ -4,7 +4,7 @@ author: mikitasazan
 
 inputs:
   event:
-    description: Тип события — deploy, job, report, ci, pr, incident, heartbeat_miss
+    description: Тип события — deploy, job, report, ci, pr, issue, incident, heartbeat_miss
     required: true
   project:
     description: playhub, one-q, arvent или game-publisher
@@ -41,6 +41,8 @@ inputs:
   author:
     required: false
   reviewer:
+    required: false
+  assignee:
     required: false
   detail:
     required: false
@@ -84,6 +86,7 @@ runs:
         IN_NUMBER: ${{ inputs.number }}
         IN_AUTHOR: ${{ inputs.author }}
         IN_REVIEWER: ${{ inputs.reviewer }}
+        IN_ASSIGNEE: ${{ inputs.assignee }}
         IN_DETAIL: ${{ inputs.detail }}
         IN_STATS: ${{ inputs.stats }}
         IN_LINES: ${{ inputs.lines }}
@@ -120,6 +123,7 @@ runs:
         add --number   "$IN_NUMBER"
         add --author   "$IN_AUTHOR"
         add --reviewer "$IN_REVIEWER"
+        add --assignee "$IN_ASSIGNEE"
         add --detail   "$IN_DETAIL"
 
         # Многострочные входы: по строке на значение. Раньше здесь читался

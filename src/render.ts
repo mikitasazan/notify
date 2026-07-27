@@ -138,10 +138,23 @@ const renderCi: Renderer<Extract<NotifyEvent, { type: 'ci' }>> = (e) => {
   ]);
 };
 
+// Значок у каждого вида свой: в ленте Ops событие узнаётся по нему до чтения
+// текста. Дублировать значок между видами нельзя — легенда закреплена в теме
+// и обещает однозначность.
 const PR_TITLES: Record<Extract<NotifyEvent, { type: 'pr' }>['action'], { icon: string; verb: string }> = {
   opened: { icon: '🔀', verb: 'открыт' },
+  ready_for_review: { icon: '📤', verb: 'готов к ревью' },
   review_requested: { icon: '👁', verb: 'ждёт ревью' },
-  merged: { icon: '✅', verb: 'смёржен' }
+  approved: { icon: '👍', verb: 'ревью пройдено' },
+  changes_requested: { icon: '📝', verb: 'запрошены правки' },
+  merged: { icon: '✅', verb: 'смёржен' },
+  closed: { icon: '⛔', verb: 'закрыт без слияния' }
+};
+
+const ISSUE_TITLES: Record<Extract<NotifyEvent, { type: 'issue' }>['action'], { icon: string; verb: string }> = {
+  opened: { icon: '🆕', verb: 'заведена' },
+  assigned: { icon: '🙋', verb: 'взята в работу' },
+  closed: { icon: '☑️', verb: 'закрыта' }
 };
 
 const renderPr: Renderer<Extract<NotifyEvent, { type: 'pr' }>> = (e) => {
@@ -153,6 +166,18 @@ const renderPr: Renderer<Extract<NotifyEvent, { type: 'pr' }>> = (e) => {
     kv('автор', e.author),
     kv('ревьюер', e.reviewer),
     link(e.url, 'Открыть PR')
+  ]);
+};
+
+const renderIssue: Renderer<Extract<NotifyEvent, { type: 'issue' }>> = (e) => {
+  const { icon, verb } = ISSUE_TITLES[e.action];
+
+  return join([
+    header(icon, `Задача #${e.number} ${verb}`, e.project),
+    esc(e.title),
+    kv('автор', e.author),
+    kv('исполнитель', e.assignee),
+    link(e.url, 'Открыть задачу')
   ]);
 };
 
@@ -172,6 +197,7 @@ const RENDERERS: { [K in NotifyEvent['type']]: Renderer<Extract<NotifyEvent, { t
   report: renderReport,
   ci: renderCi,
   pr: renderPr,
+  issue: renderIssue,
   incident: renderIncident,
   heartbeat_miss: renderHeartbeatMiss
 };

@@ -81,10 +81,17 @@ notify report --project playhub --json < payload.json   # весь объект 
 | `report` | сводка с цифрами | `project`, `title`, `lines` |
 | `ci` | итог CI на master | `project`, `status` |
 | `pr` | событие пул-реквеста | `project`, `action`, `number`, `title` |
+| `issue` | событие задачи | `project`, `action`, `number`, `title` |
 | `incident` | приложение сломалось прямо сейчас | `project`, `title` |
 | `heartbeat_miss` | задача не отметилась вовремя | `project`, `job` |
 
 Полные сигнатуры — `src/events.ts`.
+
+`--action` у `pr`: `opened`, `ready_for_review`, `review_requested`, `approved`,
+`changes_requested`, `merged`, `closed`. У `issue`: `opened`, `assigned`,
+`closed`. Принимаются и сырые имена GitHub (`reopened`,
+`review_request_removed`). Неизвестное действие — ошибка разбора, а не молчаливая
+подмена: иначе «запрошены правки» приехали бы как «открыт».
 
 ## Новый проект
 

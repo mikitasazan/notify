@@ -93,3 +93,48 @@ test('неизвестный тип события даёт понятную о�
     /неизвестный тип события/
   );
 });
+
+/**
+ * Легенда значков закреплена в теме Ops и обещает: один значок — один вид
+ * события. Совпадение значков делает ленту нечитаемой ровно там, где по ней
+ * следят за работой команды.
+ */
+test('у каждого вида PR и задачи свой значок, повторов нет', () => {
+  const prActions = [
+    'opened',
+    'ready_for_review',
+    'review_requested',
+    'approved',
+    'changes_requested',
+    'merged',
+    'closed'
+  ] as const;
+  const issueActions = ['opened', 'assigned', 'closed'] as const;
+
+  const icons = [
+    ...prActions.map(
+      (action) =>
+        render({ type: 'pr', project: 'arvent', action, number: 1, title: 'т' } as NotifyEvent).slice(0, 2)
+    ),
+    ...issueActions.map(
+      (action) =>
+        render({ type: 'issue', project: 'arvent', action, number: 2, title: 'т' } as NotifyEvent).slice(0, 2)
+    )
+  ];
+
+  assert.equal(new Set(icons).size, icons.length, `значки повторяются: ${icons.join(' ')}`);
+});
+
+test('задача: исполнитель попадает в сообщение', () => {
+  const out = render({
+    type: 'issue',
+    project: 'arvent',
+    action: 'assigned',
+    number: 128,
+    title: 'Лист ожидания',
+    assignee: 'Ilja'
+  } as NotifyEvent);
+
+  assert.match(out, /Задача #128/);
+  assert.match(out, /Ilja/);
+});
