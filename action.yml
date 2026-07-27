@@ -14,6 +14,10 @@ inputs:
     required: false
   commit:
     required: false
+  commit-url:
+    description: 'Ссылка на коммит — по умолчанию тот, на котором запущен workflow'
+    default: '${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}'
+    required: false
   url:
     required: false
   target:
@@ -80,6 +84,7 @@ runs:
         IN_PROJECT: ${{ inputs.project }}
         IN_STATUS: ${{ inputs.status }}
         IN_COMMIT: ${{ inputs.commit }}
+        IN_COMMIT_URL: ${{ inputs.commit-url }}
         IN_URL: ${{ inputs.url }}
         IN_TARGET: ${{ inputs.target }}
         IN_VIA: ${{ inputs.via }}
@@ -118,6 +123,7 @@ runs:
 
         add() { [ -n "$2" ] && ARGS+=("$1" "$2"); return 0; }
         add --commit   "$IN_COMMIT"
+        add --commit-url "$IN_COMMIT_URL"
         add --url      "$IN_URL"
         add --target   "$IN_TARGET"
         add --via      "$IN_VIA"
