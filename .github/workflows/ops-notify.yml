@@ -1,0 +1,75 @@
+# Общая логика уведомлений об Ops-событиях. Проекты вызывают ЭТОТ файл, а не
+# держат по своей копии: разъезжаются именно копии, а не вызовы.
+#
+# Список триггеров остаётся в вызывающем репозитории — GitHub не позволяет
+# вызываемому workflow объявлять свои события. Но список статичен, меняется
+# здесь только логика.
+name: ops-notify
+
+on:
+  workflow_call:
+    inputs:
+      project:
+        description: Ключ проекта из ROUTES пакета — playhub, game-publisher, one-q, arvent
+        required: true
+        type: string
+    secrets:
+      OPS_BOT_TOKEN:
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      # ВСЁ из github.event идёт через env, никогда через ${{ }} внутри run:
+      # подстановка происходит в текст скрипта ДО запуска bash, и заголовок
+      # PR с апострофом или `$(...)` ломает шаг либо выполняется на раннере.
+      - id: map
+        shell: bash
+        env:
+          EV: ${{ github.event_name }}
+          ACT: ${{ github.event.action }}
+          MERGED: ${{ github.event.pull_request.merged }}
+          REVIEW_STATE: ${{ github.event.review.state }}
+        run: |
+          case "$EV" in
+            pull_request)
+              if [ "$ACT" = "closed" ]; then
+                [ "$MERGED" = "true" ] && out=merged || out=closed
+              else
+                out="$ACT"
+              fi
+              kind=pr ;;
+            pull_request_review)
+              # `commented` намеренно пропускаем: это реплика в обсуждении, а не
+              # решение по PR. Иначе лента Ops превратится в чат.
+              case "$REVIEW_STATE" in
+                approved)          out=approved ;;
+                changes_requested) out=changes_requested ;;
+                *)                 out="" ;;
+              esac
+              kind=pr ;;
+            issues)
+              out="$ACT"
+              kind=issue ;;
+          esac
+          echo "action=$out" >> "$GITHUB_OUTPUT"
+          echo "kind=$kind"  >> "$GITHUB_OUTPUT"
+
+      - if: steps.map.outputs.action != ''
+        uses: mikitasazan/notify@v1
+        with:
+          event: ${{ steps.map.outputs.kind }}
+          project: ${{ inputs.project }}
+          action: ${{ steps.map.outputs.action }}
+          number: ${{ github.event.pull_request.number || github.event.issue.number }}
+          title: ${{ github.event.pull_request.title || github.event.issue.title }}
+          author: ${{ github.event.pull_request.user.login || github.event.issue.user.login }}
+          reviewer: ${{ github.event.requested_reviewer.login || github.event.review.user.login }}
+          assignee: ${{ github.event.assignee.login }}
+          url: ${{ github.event.pull_request.html_url || github.event.issue.html_url }}
+        env:
+          OPS_BOT_TOKEN: ${{ secrets.OPS_BOT_TOKEN }}
