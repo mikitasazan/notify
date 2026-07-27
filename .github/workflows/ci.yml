@@ -55,3 +55,19 @@ jobs:
         run: |
           node dist/cli.js deploy --project несуществующий --status ok
           echo "код возврата $? — обязан быть 0"
+
+      # Политика «одна новость — одна карточка» держится одной строкой белого
+      # списка в ops-notify.yml, и вернуть в неё лишнее — правка на одно слово.
+      # Проверка сторожит именно это: рендерер такие действия РИСОВАТЬ умеет,
+      # поэтому возврат ничего не сломает и пройдёт незамеченным — просто про
+      # каждый PR снова начнут приходить три сообщения вместо одного.
+      - name: Политика Ops — объявленный PR не объявляется второй раз
+        run: |
+          LINE=$(grep -o 'pr:opened[^)]*' .github/workflows/ops-notify.yml)
+          echo "белый список: $LINE"
+          for a in ready_for_review review_requested reopened review_request_removed; do
+            if echo "$LINE" | grep -q "pr:$a"; then
+              echo "«$a» вернулось в белый список — это второе сообщение про уже объявленный PR"
+              exit 1
+            fi
+          done
