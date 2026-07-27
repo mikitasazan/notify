@@ -25,6 +25,8 @@ export type NotifyEvent =
       project: Project;
       status: 'ok' | 'fail';
       commit?: string;
+      /** Ссылка на коммит — строка «коммит» становится кликабельной. */
+      commitUrl?: string;
       url?: string;
       /**
        * Куда выкатили. Заполнять ТОЛЬКО когда окружений больше одного: у сайтов

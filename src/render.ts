@@ -92,9 +92,17 @@ const renderDeploy: Renderer<Extract<NotifyEvent, { type: 'deploy' }>> = (e) => 
   const icon = e.status === 'ok' ? '✅' : '🔴';
   const title = e.status === 'ok' ? 'Деплой завершён' : 'Деплой упал';
 
+  // Коммит со ссылкой — кликабельная строка вместо голого текста; жалоба
+  // владельца на некликабельные дайджесты распространяется и сюда.
+  const commitLine = e.commit
+    ? e.commitUrl
+      ? `коммит: <a href="${esc(e.commitUrl)}"><b>${esc(e.commit)}</b></a>`
+      : kv('коммит', e.commit)
+    : null;
+
   return join([
     header(icon, title, e.project),
-    kv('коммит', e.commit),
+    commitLine,
     kv('откуда', e.via),
     kv('куда', e.target),
     link(e.url, 'Открыть логи')

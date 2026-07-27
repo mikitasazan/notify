@@ -9,7 +9,7 @@
  * (см. docs/rollout.md «чего не делаем»): сценария, где деплой должен упасть
  * из-за неотправленного сообщения, не существует.
  *
- *   notify deploy   --project playhub --status ok --commit "msg" --url "..."
+ *   notify deploy   --project playhub --status ok --commit "msg" [--commit-url "..."] --url "..."
  *   notify job      --project playhub --job "Импорт игр" --status ok --stat "добавлено=5"
  *   notify report   --project playhub --title "Сводка за день" --line "Игр=1284"
  *   notify ci       --project arvent  --status fail --branch master --actor saz_sam
@@ -198,6 +198,7 @@ if (flags.has('json')) {
         project: project(),
         status: status(),
         commit: one('commit'),
+        commitUrl: one('commit-url'),
         url: one('url'),
         target: one('target'),
         via: one('via')

@@ -138,3 +138,14 @@ test('задача: исполнитель попадает в сообщени�
   assert.match(out, /Задача #128/);
   assert.match(out, /Ilja/);
 });
+
+test('deploy: коммит со ссылкой кликабелен и жирный', () => {
+  const out = render({
+    type: 'deploy',
+    project: 'game-publisher',
+    status: 'ok',
+    commit: 'feat: x',
+    commitUrl: 'https://github.com/mikitasazan/game-publisher/commit/abc123'
+  } as never);
+  assert.ok(out.includes('<a href="https://github.com/mikitasazan/game-publisher/commit/abc123"><b>feat: x</b></a>'));
+});
