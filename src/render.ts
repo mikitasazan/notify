@@ -71,8 +71,11 @@ export const clampMessage = (text: string, limit = 4000): string => {
 const header = (icon: string, title: string, project: string): string =>
   `${icon} <b>${esc(title)}</b> · ${esc(project)}`;
 
+// Значение — жирным: канон формата (bot-message-formatting-canon) — иконка-лид,
+// факты построчно, значения выделены; метка остаётся обычной, чтобы глаз
+// цеплялся за содержимое, а не за служебное слово.
 const kv = (label: string, value: string | number | undefined): string | null =>
-  value === undefined || value === '' ? null : `${esc(label)}: ${esc(value)}`;
+  value === undefined || value === '' ? null : `${esc(label)}: <b>${esc(value)}</b>`;
 
 const link = (url: string | undefined, label: string): string | null =>
   url ? `<a href="${esc(url)}">${esc(label)}</a>` : null;
