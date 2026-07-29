@@ -1,6 +1,6 @@
 {
   "name": "@mikitasazan/notify",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Единая типизированная отправка Telegram-уведомлений (форум-темы, маршрутизация, ретраи) для всех проектов",
   "type": "module",
   "license": "MIT",
