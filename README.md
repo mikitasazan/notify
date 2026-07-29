@@ -63,7 +63,7 @@ notify report --project playhub --json < payload.json   # весь объект 
 ## Из GitHub Actions
 
 ```yaml
-- uses: mikitasazan/notify@v1
+- uses: mikitasazan/notify@v1.0.0   # версию пинит propagate
   if: always()
   with: { event: deploy, project: playhub, status: '${{ job.status }}' }
   env:  { OPS_BOT_TOKEN: '${{ secrets.OPS_BOT_TOKEN }}' }
@@ -148,11 +148,13 @@ npm test            # node --test src/render.test.ts
 
 ## Release
 
-Единый ритуал для всех общих пакетов (канон — скилл `package-ops`):
+Один ритуал для всех общих пакетов (канон — скилл `package-ops`):
 
 ```bash
-npm run release -- patch|minor|major   # тесты → бамп+тег → пуш → публикация по механизму пакета
-npm run consumers:check                # кто потребляет пакет и на какой версии (дрифт → exit 1)
+release patch|minor|major   # из этого каталога
 ```
 
-Карта потребителей — `consumers.json` в корне.
+Тесты → бамп + тег → публикация из клона тега → точная версия у всех
+потребителей с прогоном их собственных проверок, включая пин `uses:` в их
+workflow. `release` и `propagate` живут в `mac-config/home/bin/` и доступны из
+PATH. Карты потребителей нет: `propagate` находит их поиском по репозиториям.

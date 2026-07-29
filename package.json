@@ -19,9 +19,7 @@
     "node": ">=22.18"
   },
   "files": [
-    "src",
-    "dist",
-    "action.yml"
+    "dist"
   ],
   "exports": {
     ".": "./dist/index.js",
@@ -35,9 +33,7 @@
     "build": "tsc -p tsconfig.build.json",
     "prepare": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "node --test src/*.test.ts",
-    "release": "bash scripts/release.sh",
-    "consumers:check": "node scripts/consumers-check.mjs"
+    "test": "node --test src/*.test.ts"
   },
   "devDependencies": {
     "@types/node": "^24.13.3",
