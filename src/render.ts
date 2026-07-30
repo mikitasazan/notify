@@ -105,6 +105,7 @@ const renderDeploy: Renderer<Extract<NotifyEvent, { type: 'deploy' }>> = (e) => 
     commitLine,
     kv('откуда', e.via),
     kv('куда', e.target),
+    kv('примечание', e.note),
     link(e.url, 'Открыть логи')
   ]);
 };

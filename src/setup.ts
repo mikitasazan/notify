@@ -15,26 +15,33 @@
 const log = (msg: string): void => console.error(`[notify] ${msg}`);
 
 const createTopic = async (token: string, chat: string, name: string, color: number): Promise<number | null> => {
-  const res = await fetch(`https://api.telegram.org/bot${token}/createForumTopic`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chat_id: chat, name, icon_color: color }),
-    signal: AbortSignal.timeout(10_000)
-  });
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${token}/createForumTopic`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chat, name, icon_color: color }),
+      signal: AbortSignal.timeout(10_000)
+    });
 
-  const body = (await res.json()) as {
-    ok: boolean;
-    result?: { message_thread_id: number };
-    description?: string;
-  };
+    const body = (await res.json()) as {
+      ok: boolean;
+      result?: { message_thread_id: number };
+      description?: string;
+    };
 
-  if (!body.ok || !body.result) {
-    log(`не удалось создать «${name}»: ${body.description ?? `HTTP ${res.status}`}`);
+    if (!body.ok || !body.result) {
+      log(`не удалось создать «${name}»: ${body.description ?? `HTTP ${res.status}`}`);
+
+      return null;
+    }
+
+    return body.result.message_thread_id;
+  } catch (err) {
+    // Сеть/таймаут/нечитаемый ответ — не роняем CLI (его контракт: всегда exit 0).
+    log(`не удалось создать «${name}»: ${err instanceof Error ? err.message : String(err)}`);
 
     return null;
   }
-
-  return body.result.message_thread_id;
 };
 
 export const setupTopic = async (chatId: string, projectKey: string): Promise<void> => {
@@ -49,8 +56,17 @@ export const setupTopic = async (chatId: string, projectKey: string): Promise<vo
   const ops = await createTopic(token, chatId, '⚙️ Ops', 9367192);
   const dev = await createTopic(token, chatId, '💬 Dev', 7322096);
 
-  if (ops === null || dev === null) {
-    log('проверь: бот админ группы с правом «Управление темами», а темы в группе включены?');
+  // Частичный успех: если создался только Ops — печатаем его, иначе повторный
+  // запуск создал бы ДРУГУЮ тему Ops, а старый id потерялся бы.
+  if (ops === null) {
+    log('Ops не создан — проверь: бот админ группы с правом «Управление темами», темы включены?');
+
+    return;
+  }
+  if (dev === null) {
+    log(`Ops создан (id=${ops}), Dev нет — добавь Dev вручную или повтори, и возьми ops=${ops}`);
+    log('добавь в src/routes.ts (dev подставь после):');
+    log(`  ${JSON.stringify(projectKey)}: { chat: '${chatId}', ops: ${ops}, dev: <вставь> },`);
 
     return;
   }

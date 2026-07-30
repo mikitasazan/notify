@@ -17,6 +17,7 @@ const SAMPLES: NotifyEvent[] = [
   { type: 'report', project: 'playhub', title: XSS, period: '26 июля', lines: [['ключ', XSS]] },
   { type: 'ci', project: 'arvent', status: 'fail', branch: XSS, actor: 'x' },
   { type: 'pr', project: 'arvent', action: 'opened', number: 1, title: XSS, author: XSS },
+  { type: 'issue', project: 'arvent', action: 'opened', number: 1, title: XSS, assignee: XSS },
   { type: 'incident', project: 'arvent', title: XSS, detail: XSS },
   { type: 'heartbeat_miss', project: 'playhub', job: XSS, lastSeen: '10:00' }
 ];
@@ -148,4 +149,19 @@ test('deploy: коммит со ссылкой кликабелен и жирн�
     commitUrl: 'https://github.com/mikitasazan/game-publisher/commit/abc123'
   } as never);
   assert.ok(out.includes('<a href="https://github.com/mikitasazan/game-publisher/commit/abc123"><b>feat: x</b></a>'));
+});
+
+test('deploy: note поясняет отмену/пропуск', () => {
+  const out = render({
+    type: 'deploy',
+    project: 'playhub',
+    status: 'fail',
+    note: 'отменён: секреты не нашли'
+  } as never);
+  assert.ok(out.includes('примечание: <b>отменён: секреты не нашли</b>'));
+});
+
+test('deploy: без note строки примечания нет', () => {
+  const out = render({ type: 'deploy', project: 'playhub', status: 'ok' } as never);
+  assert.ok(!out.includes('примечание'));
 });

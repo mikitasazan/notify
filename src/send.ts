@@ -121,8 +121,13 @@ const attempt = async (token: string, target: Target, text: string): Promise<Att
       return { outcome: 'fail' };
     }
 
-    // Сюда попадают отказы соединения (DNS, TLS, сеть недоступна) — запрос не
-    // ушёл, дубля быть не может, фолбэк безопасен.
+    // Сюда попадают отказы соединения (DNS, TLS, сеть недоступна) — запрос
+    // почти наверняка не ушёл, и curl-фолбэк безопасен. НЕ абсолютно: обрыв
+    // (reset/truncation) ПОСЛЕ того, как Telegram принял POST, тоже кидает
+    // исключение — тогда повтор даст дубль. Это редкий случай; полное
+    // отсутствие дублей невозможно без idempotency-key у Bot API (его нет).
+    // Логика прежняя: дубль на редком reset — меньшее зло, чем потеря
+    // сообщения на частом сетевом сбое.
     log('fetch не прошёл, пробуем curl…');
 
     const curl = sendViaCurl(token, target, text);
@@ -165,6 +170,16 @@ const deliver = async (where: Target[], text: string): Promise<SendResult> => {
 
   if (!token) {
     log('нет OPS_BOT_TOKEN — сообщение не отправлено');
+
+    return 'skipped';
+  }
+
+  // Токен interpolируется в URL и в curl-конфиг (`url = "...bot${token}..."`).
+  // Валидный токен Telegram — это `\d+:[\w-]+`; что-либо с кавычкой/переводом
+  // строки/`?` сломало бы разбор (инъекция директивы curl или query-хвост).
+  // Это требует покорёженного секрета, но проверка копеечная.
+  if (!/^\d+:[A-Za-z0-9_-]+$/.test(token)) {
+    log('OPS_BOT_TOKEN не похож на токен Telegram — отправка отменена');
 
     return 'skipped';
   }

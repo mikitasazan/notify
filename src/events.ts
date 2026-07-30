@@ -41,6 +41,8 @@ export type NotifyEvent =
        * какой сработал.
        */
       via?: string;
+      /** Пояснение: почему отменён/пропущен прогон после деплоя. */
+      note?: string;
     }
   /** Регулярная задача по расписанию: импорт игр, бэкап БД, валидатор. */
   | {
@@ -131,7 +133,7 @@ export type NotifyEvent =
 
 export type EventType = NotifyEvent['type'];
 
-/** Красное = со звуком и с дублем в тему инцидентов. Всё остальное — тихо. */
+/** Красное = со звуком. Всё остальное — тихо. (Отдельной темы «инциденты» больше нет — авария видна в ленте проекта.) */
 export const severity = (e: NotifyEvent): 'info' | 'error' => {
   if (e.type === 'incident' || e.type === 'heartbeat_miss') {
     return 'error';

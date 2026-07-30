@@ -89,6 +89,20 @@ for (let i = 1; i < args.length; i++) {
 
 const one = (key: string): string | undefined => flags.get(key)?.[0];
 
+// Число с явной ошибкой разбора, иначе рендер рисовал «PR #NaN».
+const num = (key: string): number => {
+  const raw = one(key);
+  const n = Number(raw);
+
+  if (raw === undefined || Number.isNaN(n)) {
+    parseErrors.push(`--${key}: ожидается число, получено «${raw ?? ''}»`);
+
+    return 0;
+  }
+
+  return n;
+};
+
 // --item "текст" или --item "текст|https://ссылка"
 const items = (): Array<{ text: string; url?: string }> =>
   (flags.get('item') ?? []).map((raw) => {
@@ -123,7 +137,6 @@ const PR_ALIASES: Record<string, PrAction> = {
   reopened: 'opened',
   ready_for_review: 'ready_for_review',
   review_requested: 'review_requested',
-  review_request_removed: 'review_requested',
   approved: 'approved',
   changes_requested: 'changes_requested',
   merged: 'merged',
@@ -186,7 +199,9 @@ if (flags.has('json')) {
   try {
     const payload = JSON.parse(readFileSync(0, 'utf-8')) as Record<string, unknown>;
 
-    event = { type: command, ...payload } as NotifyEvent;
+    // type — за командой, не за payload: иначе --pr <объект с type:deploy>
+    // отправил бы событие другого типа.
+    event = { ...payload, type: command } as NotifyEvent;
   } catch (err) {
     log(`не удалось разобрать --json со stdin: ${err instanceof Error ? err.message : String(err)}`);
   }
@@ -201,7 +216,8 @@ if (flags.has('json')) {
         commitUrl: one('commit-url'),
         url: one('url'),
         target: one('target'),
-        via: one('via')
+        via: one('via'),
+        note: one('note')
       };
       break;
     case 'job':
@@ -243,7 +259,7 @@ if (flags.has('json')) {
         type: 'pr',
         project: project(),
         action: prAction(one('action')),
-        number: Number(one('number')),
+        number: num('number'),
         title: one('title') ?? '(без заголовка)',
         author: one('author'),
         reviewer: one('reviewer'),
@@ -255,7 +271,7 @@ if (flags.has('json')) {
         type: 'issue',
         project: project(),
         action: issueAction(one('action')),
-        number: Number(one('number')),
+        number: num('number'),
         title: one('title') ?? '(без заголовка)',
         author: one('author'),
         assignee: one('assignee'),
