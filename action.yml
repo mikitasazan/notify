@@ -10,7 +10,7 @@ inputs:
     description: playhub, one-q, arvent или game-publisher
     required: true
   status:
-    description: 'ok/fail (для deploy, job, ci) — обычно ${{ job.status }}, success/failure маппится автоматически'
+    description: 'ok/fail (для deploy, job, ci) — обычно передают статус джобы (job.status); success/failure маппится автоматически'
     required: false
   commit:
     required: false
@@ -36,10 +36,10 @@ inputs:
   period:
     required: false
   branch:
-    description: 'По умолчанию — ${{ github.ref_name }}'
+    description: 'По умолчанию — имя ветки (github.ref_name)'
     required: false
   actor:
-    description: 'По умолчанию — ${{ github.actor }}'
+    description: 'По умолчанию — инициатор (github.actor)'
     required: false
   action:
     description: opened/review_requested/merged (для pr)
@@ -113,7 +113,7 @@ runs:
 
         # job.status отдаёт success/failure — приводим к ok/fail, которые
         # понимает пакет. Нормализация здесь дублирует CLI намеренно: так
-        # `status: ${{ job.status }}` работает без обёрток в каждом workflow.
+        # 'status: job.status' работает без обёрток в каждом workflow.
         if [ -n "$IN_STATUS" ]; then
           case "$IN_STATUS" in
             success|ok) ARGS+=(--status ok) ;;
