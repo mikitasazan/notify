@@ -27,8 +27,12 @@ type Forum = {
   chat: string;
   /** Вкладка «⚙️ Ops» — сюда пишут роботы. */
   ops: number;
-  /** Вкладка «💬 Dev» — люди. Бот сюда не пишет; поле держим для полноты. */
-  dev: number;
+  /**
+   * Вкладка «💬 Dev» — люди. Бот сюда не пишет; поле держим для полноты.
+   * Необязательное: у инфраструктурного форума людей нет и обсуждать нечего,
+   * а пустая вкладка читается как забытая настройка, а не как задел.
+   */
+  dev?: number;
 };
 
 export const ROUTES: Record<Project, Forum> = {
@@ -38,7 +42,10 @@ export const ROUTES: Record<Project, Forum> = {
   arvent: { chat: '-1004299939100', ops: 22, dev: 23 },
   playhub: { chat: '-1004418379613', ops: 3, dev: 4 },
   'game-publisher': { chat: '-1004292453693', ops: 3, dev: 4 },
-  'one-q': { chat: '-1004466909784', ops: 3, dev: 4 }
+  'one-q': { chat: '-1004466909784', ops: 3, dev: 4 },
+  // Без `dev`: сейф — инфраструктура, обсуждать в нём некому. Только отчёты
+  // еженедельной проверки, и то лишь когда что-то сломалось.
+  vault: { chat: '-1004459314999', ops: 3 }
 };
 
 export type Target = { chat: string; thread?: number; silent: boolean };
